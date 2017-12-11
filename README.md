@@ -9,10 +9,8 @@ Launch nginx proxying connections to the upstream using the default config:
 docker run --name nginx-certbot \
   --restart=always \
   --net=host \
-  -v /data/nginx:/etc/nginx:rw \
+  -v /data/nginx/conf.d:/etc/nginx/conf.d:rw \
   -v /data/letsencrypt:/etc/letsencrypt:rw \
-  -v /etc/ssl:/etc/ssl:ro \
-  -v /etc/pki:/etc/pki:ro \
   -p 80:80 -p 443:443 -d \
   really/nginx-certbot
 ```
