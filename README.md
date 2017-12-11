@@ -20,4 +20,4 @@ docker run --name nginx-certbot \
 Example Config
 --------------
 
-This will not work well stand-alone. You must provide configuration per the example above (in /data for exampe).
+This will not work well stand-alone. You must provide configuration per the example above (in /data for example).
