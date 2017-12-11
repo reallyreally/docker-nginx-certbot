@@ -2,7 +2,7 @@ FROM alpine:latest
 
 MAINTAINER Troy Kelly <troy.kelly@really.ai>
 
-ENV VERSION=v0.0.2
+ENV VERSION=v0.0.3
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
@@ -21,10 +21,12 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
 
 RUN apk add --update --no-cache linux-headers alpine-sdk curl tzdata openssl openssl-dev nginx nginx-mod-http-lua nginx-mod-http-lua-upstream nginx-mod-devel-kit python2-dev libffi-dev py-pip py2-future py2-certifi py2-urllib3 py2-chardet && \
   mkdir -p /var/log/nginx && \
+  mkdir -p /run/nginx && \
   pip install certbot certbot-nginx && \
   apk del linux-headers alpine-sdk curl openssl openssl-dev python2-dev libffi-dev && \
   apk add openssl && \
-  chown -R nginx:nginx /var/log/nginx
+  chown -R nginx:nginx /var/log/nginx && \
+  chown -R nginx:nginx /run/nginx
 
 EXPOSE 80 443
 
