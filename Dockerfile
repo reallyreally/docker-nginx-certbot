@@ -6,13 +6,6 @@ ENV VERSION=1.13.7
 ENV OPENSSL_VERSION=1.1.0g
 ENV LIBPNG_VERSION=1.6.34
 
-export VERSION=1.13.7 && \
-export OPENSSL_VERSION=1.1.0g && \
-export LIBPNG_VERSION=1.6.34 && \
-export build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zlib-dev apr-dev apr-util-dev libjpeg-turbo-dev icu-dev python2-dev" && \
-export runtime_pkgs="ca-certificates pcre apr-util libjpeg-turbo icu icu-libs python2 py-setuptools" && \
-apk add --update --no-cache ${build_pkgs} ${runtime_pkgs}
-
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
 ARG VCS_REF
