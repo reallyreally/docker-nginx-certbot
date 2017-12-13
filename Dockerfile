@@ -5,6 +5,7 @@ MAINTAINER Troy Kelly <troy.kelly@really.ai>
 ENV VERSION=1.13.7
 ENV OPENSSL_VERSION=1.1.0g
 ENV LIBPNG_VERSION=1.6.34
+ENV LUAJIT_VERSION=2.0.5
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
@@ -12,9 +13,10 @@ ARG VCS_REF
 ARG VERSION
 ARG OPENSSL_VERSION
 ARG LIBPNG_VERSION
+ARG LUAJIT_VERSION
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.name="NGINX with Certbot and lua support" \
-      org.label-schema.description="Provides nginx with support for certbot --nginx." \
+      org.label-schema.description="Provides nginx ${VERSION} with lua (LuaJIT v${LUAJIT_VERSION}) support for certbot --nginx. Built with OpenSSL v${LIBPNG_VERSION} and LibPNG v${LIBPNG_VERSION}" \
       org.label-schema.url="https://really.ai/about/opensource" \
       org.label-schema.vcs-ref=$VCS_REF \
       org.label-schema.vcs-url="https://github.com/reallyreally/docker-nginx-certbot" \
@@ -32,6 +34,8 @@ RUN build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zl
   wget -qO - https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz | tar xzf  - -C /src && \
   wget -qO - http://nginx.org/download/nginx-${VERSION}.tar.gz | tar xzf  - -C /src && \
   wget -qO - http://prdownloads.sourceforge.net/libpng/libpng-${LIBPNG_VERSION}.tar.gz | tar xzf  - -C /src && \
+  wget -qO - http://luajit.org/download/LuaJIT-${LUAJIT_VERSION}.tar.gz | tar xzf  - -C /src && \
+  cd /src/LuaJIT-${LUAJIT_VERSION} && \
   cd /src/libpng-${LIBPNG_VERSION} && \
   ./configure --build=$CBUILD --host=$CHOST --prefix=/usr --enable-shared --with-libpng-compat && \
   make -j$(nproc) install V=0 && \
@@ -86,6 +90,8 @@ RUN build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zl
   	--with-openssl=/src/openssl-${OPENSSL_VERSION} && \
   make -j$(nproc) && \
   make -j$(nproc) install && \
+  sed -i 's!#user  nobody!user nginx nginx!g' /etc/nginx/nginx.conf && \
+  sed -i "s!^    # another virtual host!include /etc/nginx/conf.d/*.conf;\n    # another virtual host!g" /etc/nginx/nginx.conf && \
   cd ~ && \
   pip install certbot certbot-nginx && \
   apk del ${build_pkgs} && \
