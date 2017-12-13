@@ -3,26 +3,21 @@ FROM alpine:latest
 MAINTAINER Troy Kelly <troy.kelly@really.ai>
 
 ENV VERSION=1.13.7
-ENV NPS_VERSION=1.12.34.3-stable
-#ENV MODPAGESPEED_VERSION=latest-stable
-ENG MODPAGESPEED_VERSION=latest-beta
-ENV BINUTILS_VERSION=2.25
+ENV OPENSSL_VERSION=1.1.0g
 ENV LIBPNG_VERSION=1.6.34
 
 export VERSION=1.13.7 && \
-export NPS_VERSION=1.12.34.3-stable && \
-export MODPAGESPEED_VERSION=latest-beta && \
-export BINUTILS_VERSION=2.25 && \
-export LIBPNG_VERSION=1.2.56 && \
-export build_pkgs=".build-deps apache2-dev apr-dev apr-util-dev build-base curl icu-dev libjpeg-turbo-dev linux-headers gperf pcre-dev zlib-dev bash openssl openssl-dev python2-dev py-pip libffi-dev" && \
-export runtime_pkgs="ca-certificates libuuid apr apr-util libjpeg-turbo icu icu-libs openssl pcre zlib"
+export OPENSSL_VERSION=1.1.0g && \
+export LIBPNG_VERSION=1.6.34 && \
+export build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zlib-dev apr-dev apr-util-dev libjpeg-turbo-dev icu-dev python2-dev" && \
+export runtime_pkgs="ca-certificates pcre apr-util libjpeg-turbo icu icu-libs python2 py-setuptools" && \
+apk add --update --no-cache ${build_pkgs} ${runtime_pkgs}
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
 ARG VCS_REF
 ARG VERSION
-ARG NPS_VERSION
-ARG MODPAGESPEED_VERSION
+ARG OPENSSL_VERSION
 ARG LIBPNG_VERSION
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.name="NGINX with Certbot and lua support" \
@@ -34,61 +29,75 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.version=v$VERSION \
       org.label-schema.schema-version="1.0"
 
-RUN build_pkgs=".build-deps apache2-dev apr-dev apr-util-dev build-base curl icu-dev libjpeg-turbo-dev linux-headers gperf pcre-dev zlib-dev bash openssl openssl-dev python2-dev py-pip libffi-dev" && \
-  runtime_pkgs="ca-certificates libuuid apr apr-util libjpeg-turbo icu icu-libs openssl pcre zlib" && \
+RUN build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zlib-dev apr-dev apr-util-dev libjpeg-turbo-dev icu-dev python2-dev" && \
+  runtime_pkgs="ca-certificates pcre apr-util libjpeg-turbo icu icu-libs python2 py-setuptools" && \
   apk add --update --no-cache ${build_pkgs} ${runtime_pkgs} && \
-  mkdir -p /src/bin /var/log/nginx /run/nginx && \
+  mkdir -p /src /var/log/nginx /run/nginx /var/cache/nginx && \
+  addgroup nginx && \
+  adduser -s /usr/sbin/nologin -G nginx -D nginx && \
+  cd /src && \
+  wget -qO - https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz | tar xzf  - -C /src && \
+  wget -qO - http://nginx.org/download/nginx-${VERSION}.tar.gz | tar xzf  - -C /src && \
+  wget -qO - http://prdownloads.sourceforge.net/libpng/libpng-${LIBPNG_VERSION}.tar.gz | tar xzf  - -C /src && \
+  cd /src/libpng-${LIBPNG_VERSION} && \
+  ./configure --build=$CBUILD --host=$CHOST --prefix=/usr --enable-shared --with-libpng-compat && \
+  make -j$(nproc) install V=0 && \
+  cd /src/openssl-${OPENSSL_VERSION} && \
+  ./config no-async --prefix=/usr && \
+  make -j$(nproc) depend && \
+  make -j$(nproc) && \
+  make -j$(nproc) install && \
+  cd /src/nginx-${VERSION} && \
+  ./configure \
+  	--prefix=/etc/nginx \
+  	--sbin-path=/usr/sbin/nginx \
+  	--conf-path=/etc/nginx/nginx.conf \
+  	--error-log-path=/var/log/nginx/error.log \
+  	--http-log-path=/var/log/nginx/access.log \
+  	--pid-path=/var/run/nginx.pid \
+  	--lock-path=/var/run/nginx.lock \
+  	--http-client-body-temp-path=/var/cache/nginx/client_temp \
+  	--http-proxy-temp-path=/var/cache/nginx/proxy_temp \
+  	--http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
+  	--http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
+  	--http-scgi-temp-path=/var/cache/nginx/scgi_temp \
+  	--user=nginx \
+  	--group=nginx \
+  	--with-http_ssl_module \
+  	--with-http_realip_module \
+  	--with-http_addition_module \
+  	--with-http_sub_module \
+  	--with-http_dav_module \
+  	--with-http_flv_module \
+  	--with-http_mp4_module \
+  	--with-http_gunzip_module \
+  	--with-http_gzip_static_module \
+  	--with-http_random_index_module \
+  	--with-http_secure_link_module \
+  	--with-http_stub_status_module \
+  	--with-http_auth_request_module \
+  	--without-http_autoindex_module \
+  	--without-http_ssi_module \
+  	--with-threads \
+  	--with-stream \
+  	--with-stream_ssl_module \
+  	--with-mail \
+  	--with-mail_ssl_module \
+  	--with-file-aio \
+  	--with-http_v2_module \
+    --with-cc-opt="-fPIC -I /usr/include/apr-1" \
+    --with-ld-opt="-luuid -lapr-1 -laprutil-1 -licudata -licuuc -lpng16 -lturbojpeg -ljpeg" \
+    --with-openssl-opt="no-async enable-ec_nistp_64_gcc_128 no-shared no-ssl2 no-ssl3 no-comp no-idea no-weak-ssl-ciphers -DOPENSSL_NO_HEARTBEATS -O3 -fPIE -fstack-protector-strong -D_FORTIFY_SOURCE=2" \
+  	--with-ipv6 \
+  	--with-pcre-jit \
+  	--with-openssl=/src/openssl-${OPENSSL_VERSION} && \
+  make -j$(nproc) && \
+  make -j$(nproc) install && \
+  cd ~ && \
   pip install certbot certbot-nginx && \
-  cd /src && \
-  wget http://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.gz && \
-  wget "http://prdownloads.sourceforge.net/libpng/libpng-${LIBPNG_VERSION}.tar.gz" && \
-  wget "http://ftp.gnu.org/pub/gnu/gettext/gettext-latest.tar.gz" && \
-  tar xvf binutils-${BINUTILS_VERSION}.tar.gz && \
-  cd binutils-${BINUTILS_VERSION} && \
-  ./configure --prefix=/usr --disable-static && make && make install && \
-  cd /src && \
-  tar xvf gettext-latest.tar.gz && \
-  cd gettext-* && \
-  ./configure --prefix=/usr --disable-static && make && make install && \
-  cd /src && \
-  tar xvf libpng-${LIBPNG_VERSION}.tar.gz && \
-  cd libpng-${LIBPNG_VERSION} && \
-  ./configure --prefix=/usr --disable-static && make && make install && \
-  cd /src && \
-  git clone -b ${MODPAGESPEED_VERSION} --recursive https://github.com/pagespeed/mod_pagespeed.git && \
-  cd /src/mod_pagespeed && \
-  find . -name platform.h -exec sed -i s/"define U_TIMEZONE\s\+__timezone"/"define U_TIMEZONE timezone"/ "{}" \; && \
-  wget https://github.com/pagespeed/ngx_pagespeed/files/195988/psol-chromium.stacktrace.patch.txt && \
-  patch third_party/chromium/src/base/debug/stack_trace_posix.cc < psol-chromium.stacktrace.patch.txt && \
-  python build/gyp_chromium --depth=. && \
-  make BUILDTYPE=Release CXXFLAGS=" -I/usr/include/apr-1 -I/src/libpng-${LIBPNG_VERSION} -fPIC -D_GLIBCXX_USE_CXX11_ABI=0" CFLAGS=" -I/usr/include/apr-1 -I/src/libpng-${LIBPNG_VERSION} -fPIC -D_GLIBCXX_USE_CXX11_ABI=0" && \
-  make all BUILDTYPE=Release CXXFLAGS=" -I/usr/include/apr-1 -I/src/libpng-${LIBPNG_VERSION} -fPIC -D_GLIBCXX_USE_CXX11_ABI=0 -Duse_system_libs=1 -Duse_system_icu=1" CFLAGS=" -I/usr/include/apr-1 -I/src/libpng-${LIBPNG_VERSION} -D_GLIBCXX_USE_CXX11_ABI=0 -Duse_system_libs=1 -Duse_system_icu=1" && \
-  make BUILDTYPE=Release CXXFLAGS=" -I/usr/include/apr-1 -I/src/libpng-${LIBPNG_VERSION} -fPIC -D_GLIBCXX_USE_CXX11_ABI=0" CFLAGS=" -I/usr/include/apr-1 -I/src/libpng-${LIBPNG_VERSION} -fPIC -D_GLIBCXX_USE_CXX11_ABI=0"
-  make BUILDTYPE=Release CXXFLAGS=" -I/usr/include/apr-1 -I/tmp/libpng-${LIBPNG_VERSION} -fPIC -D_GLIBCXX_USE_CXX11_ABI=0" CFLAGS=" -I/usr/include/apr-1 -I/tmp/libpng-${LIBPNG_VERSION} -fPIC -D_GLIBCXX_USE_CXX11_ABI=0" && \
-
-  make BUILDTYPE=Release mod_pagespeed_test pagespeed_automatic_test && \
-  cd /src/mod_pagespeed/src && \
-  make AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release && \
-  wget https://github.com/pagespeed/ngx_pagespeed/archive/v${NPS_VERSION}.zip && \
-  unzip v${NPS_VERSION}.zip && \
-  cd ngx_pagespeed-${NPS_VERSION}/ && \
-  NPS_RELEASE_NUMBER=${NPS_VERSION/beta/} && \
-  NPS_RELEASE_NUMBER=${NPS_VERSION/stable/} && \
-  psol_url=https://dl.google.com/dl/page-speed/psol/${NPS_RELEASE_NUMBER}.tar.gz && \
-  [ -e scripts/format_binary_url.sh ] && psol_url=$(scripts/format_binary_url.sh PSOL_BINARY_URL) && \
-  wget ${psol_url} && \
-  tar -xzvf $(basename ${psol_url}) && \
-  cd /src  && \
-  wget http://nginx.org/download/nginx-${VERSION}.tar.gz  && \
-  tar -xvzf nginx-${VERSION}.tar.gz  && \
-  cd nginx-${VERSION}/ && \
-  ./configure --add-module=/src/ngx_pagespeed-${NPS_VERSION} ${PS_NGX_EXTRA_FLAGS} && \
-  make && \
-  sudo make install && \
-  apk del linux-headers alpine-sdk curl openssl openssl-dev python2-dev libffi-dev && \
-  apk add openssl && \
-  chown -R nginx:nginx /var/log/nginx && \
-  chown -R nginx:nginx /run/nginx
+  apk del ${build_pkgs} && \
+  apk add ${runtime_pkgs} && \
+  chown -R nginx:nginx /run/nginx /var/log/nginx /var/cache/nginx
 
 EXPOSE 80 443
 
