@@ -15,7 +15,8 @@ docker run --name nginx-certbot \
   really/nginx-certbot
 ```
 
-Example Config
---------------
-
-This will not work well stand-alone. You must provide configuration per the example above (in /data for example).
+Certbot
+-------
+Easily add SSL security to your nginx hosts with certbot.
+`docker exec -it nginx-certbot /bin/sh` will bring up a prompt at which time you can `certbot` to your hearts content.
+We even auto-renew for you every day!

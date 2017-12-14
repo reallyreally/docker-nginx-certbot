@@ -112,6 +112,8 @@ RUN build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zl
   cd ~ && \
   apk del perl gcc make && \
   rm -Rf /src && \
+  echo -e "#!/usr/bin/env sh\n\nif [ -f "/usr/bin/certbot" ]; then\n  /usr/bin/certbot renew\nfi\n" > /etc/periodic/daily/certrenew && \
+  chmod 755 /etc/periodic/daily/certrenew && \
   chown -R nginx:nginx /run/nginx /var/log/nginx /var/cache/nginx
 
 EXPOSE 80 443
