@@ -3,9 +3,11 @@ FROM alpine:latest
 MAINTAINER Troy Kelly <troy.kelly@really.ai>
 
 ENV VERSION=1.13.7
-ENV OPENSSL_VERSION=1.1.0g
+ENV OPENSSL_VERSION=1.0.2m  #LuaJIT Doesn't support 1.1.x
 ENV LIBPNG_VERSION=1.6.34
 ENV LUAJIT_VERSION=2.0.5
+ENV NGXDEVELKIT_VERSION=0.3.0
+ENV NGXLUA_VERSION=0.10.12rc1
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
@@ -35,7 +37,11 @@ RUN build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zl
   wget -qO - http://nginx.org/download/nginx-${VERSION}.tar.gz | tar xzf  - -C /src && \
   wget -qO - http://prdownloads.sourceforge.net/libpng/libpng-${LIBPNG_VERSION}.tar.gz | tar xzf  - -C /src && \
   wget -qO - http://luajit.org/download/LuaJIT-${LUAJIT_VERSION}.tar.gz | tar xzf  - -C /src && \
+  wget -qO - https://github.com/simpl/ngx_devel_kit/archive/v${NGXDEVELKIT_VERSION}.tar.gz | tar xzf  - -C /src && \
+  wget -qO - https://github.com/openresty/lua-nginx-module/archive/v${NGXLUA_VERSION}.tar.gz | tar xzf  - -C /src && \
   cd /src/LuaJIT-${LUAJIT_VERSION} && \
+  make -j$(nproc) && \
+  make -j$(nproc) install && \
   cd /src/libpng-${LIBPNG_VERSION} && \
   ./configure --build=$CBUILD --host=$CHOST --prefix=/usr --enable-shared --with-libpng-compat && \
   make -j$(nproc) install V=0 && \
@@ -87,7 +93,9 @@ RUN build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zl
     --with-openssl-opt="no-async enable-ec_nistp_64_gcc_128 no-shared no-ssl2 no-ssl3 no-comp no-idea no-weak-ssl-ciphers -DOPENSSL_NO_HEARTBEATS -O3 -fPIE -fstack-protector-strong -D_FORTIFY_SOURCE=2" \
   	--with-ipv6 \
   	--with-pcre-jit \
-  	--with-openssl=/src/openssl-${OPENSSL_VERSION} && \
+  	--with-openssl=/src/openssl-${OPENSSL_VERSION} \
+    --add-module=/src/ngx_devel_kit-${NGXDEVELKIT_VERSION} \
+    --add-module=/src/lua-nginx-module-${NGXLUA_VERSION} && \
   make -j$(nproc) && \
   make -j$(nproc) install && \
   sed -i 's!#user  nobody!user nginx nginx!g' /etc/nginx/nginx.conf && \
@@ -96,6 +104,12 @@ RUN build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zl
   pip install certbot certbot-nginx && \
   apk del ${build_pkgs} && \
   apk add ${runtime_pkgs} && \
+  apk add make perl && \
+  cd /src/openssl-${OPENSSL_VERSION} && \
+  make -j$(nproc) install && \
+  cd ~ && \
+  apk del make perl && \
+  rm -Rf /src && \
   chown -R nginx:nginx /run/nginx /var/log/nginx /var/cache/nginx
 
 EXPOSE 80 443
