@@ -3,7 +3,7 @@ FROM alpine:latest
 MAINTAINER Troy Kelly <troy.kelly@really.ai>
 
 ENV VERSION=1.13.7
-ENV OPENSSL_VERSION=1.0.2m  #LuaJIT Doesn't support 1.1.x
+ENV OPENSSL_VERSION=1.0.2m
 ENV LIBPNG_VERSION=1.6.34
 ENV LUAJIT_VERSION=2.0.5
 ENV NGXDEVELKIT_VERSION=0.3.0
@@ -46,7 +46,7 @@ RUN build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zl
   ./configure --build=$CBUILD --host=$CHOST --prefix=/usr --enable-shared --with-libpng-compat && \
   make -j$(nproc) install V=0 && \
   cd /src/openssl-${OPENSSL_VERSION} && \
-  ./config no-async --prefix=/usr && \
+  ./config no-async && \
   make -j$(nproc) depend && \
   make -j$(nproc) && \
   make -j$(nproc) install && \
@@ -100,15 +100,17 @@ RUN build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zl
   make -j$(nproc) install && \
   sed -i 's!#user  nobody!user nginx nginx!g' /etc/nginx/nginx.conf && \
   sed -i "s!^    # another virtual host!include /etc/nginx/conf.d/*.conf;\n    # another virtual host!g" /etc/nginx/nginx.conf && \
+  cat /etc/nginx/nginx.conf && \
   cd ~ && \
   pip install certbot certbot-nginx && \
   apk del ${build_pkgs} && \
   apk add ${runtime_pkgs} && \
-  apk add make perl && \
+  apk add gcc make perl && \
   cd /src/openssl-${OPENSSL_VERSION} && \
   make -j$(nproc) install && \
+  ln -s /usr/local/ssl/bin/openssl /usr/bin/ && \
   cd ~ && \
-  apk del make perl && \
+  apk del perl gcc make && \
   rm -Rf /src && \
   chown -R nginx:nginx /run/nginx /var/log/nginx /var/cache/nginx
 
