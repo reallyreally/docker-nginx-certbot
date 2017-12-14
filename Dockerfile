@@ -18,7 +18,7 @@ ARG LIBPNG_VERSION
 ARG LUAJIT_VERSION
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.name="NGINX with Certbot and lua support" \
-      org.label-schema.description="Provides nginx ${VERSION} with lua (LuaJIT v${LUAJIT_VERSION}) support for certbot --nginx. Built with OpenSSL v${LIBPNG_VERSION} and LibPNG v${LIBPNG_VERSION}" \
+      org.label-schema.description="Provides nginx ${VERSION} with lua (LuaJIT v${LUAJIT_VERSION}) support for certbot --nginx. Built with OpenSSL v${OPENSSL_VERSION} and LibPNG v${LIBPNG_VERSION}" \
       org.label-schema.url="https://really.ai/about/opensource" \
       org.label-schema.vcs-ref=$VCS_REF \
       org.label-schema.vcs-url="https://github.com/reallyreally/docker-nginx-certbot" \
