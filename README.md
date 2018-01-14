@@ -29,4 +29,8 @@ _or_
 
 `docker exec -it nginx-certbot certbot --no-redirect --must-staple -d example.com`
 
+_While [tls-sni-01 is disabled](https://community.letsencrypt.org/t/2018-01-09-issue-with-tls-sni-01-and-shared-hosting-infrastructure/49996)_
+
+`docker exec -it nginx-certbot certbot --manual --installer nginx --preferred-challenges dns certonly --no-redirect --must-staple -d example.com`
+
 It even auto-renew's for you every day!
