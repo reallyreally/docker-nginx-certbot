@@ -33,4 +33,4 @@ _While [tls-sni-01 is disabled](https://community.letsencrypt.org/t/2018-01-09-i
 
 `docker exec -it nginx-certbot certbot --manual --installer nginx --preferred-challenges dns certonly --no-redirect --must-staple -d example.com`
 
-It even auto-renew's for you every day!
+It even auto-renew's for you every day! (Not while tls-sni-01 is disabled)
