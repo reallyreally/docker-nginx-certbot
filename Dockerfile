@@ -103,7 +103,14 @@ RUN build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zl
   sed -i "s!^    #gzip  on;!    #gzip  on;\n    server_names_hash_max_size 6144;\n    server_names_hash_bucket_size 128;\n!g" /etc/nginx/nginx.conf && \
   cat /etc/nginx/nginx.conf && \
   cd ~ && \
-  pip install certbot certbot-nginx && \
+  pip install virtualenv && \
+  virtualenv /env && \
+  git clone https://github.com/certbot/certbot && \
+  cd certbot && \
+  /env/bin/pip install -r ./readthedocs.org.requirements.txt && \
+  export VENV_ARGS="--python $(command -v python2 || command -v python2.7)" && \
+  tools/_venv_common.sh -e acme -e . -e certbot-apache -e certbot-nginx && \
+  ln -s /root/certbot/venv/bin/certbot /usr/bin/certbot && \
   apk del ${build_pkgs} && \
   apk add ${runtime_pkgs} && \
   apk add gcc make perl && \
