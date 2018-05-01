@@ -101,6 +101,7 @@ RUN build_pkgs="alpine-sdk curl perl libffi-dev py-pip linux-headers pcre-dev zl
   sed -i 's!#user  nobody!user nginx nginx!g' /etc/nginx/nginx.conf && \
   sed -i "s!^    # another virtual host!include /etc/nginx/conf.d/*.conf;\n    # another virtual host!g" /etc/nginx/nginx.conf && \
   sed -i "s!^    #gzip  on;!    #gzip  on;\n    server_names_hash_max_size 6144;\n    server_names_hash_bucket_size 128;\n!g" /etc/nginx/nginx.conf && \
+  sed -i "s!^        #error_page  404              /404.html;!        include /etc/nginx/insert.d/*.conf;\n\n        #error_page  404              /404.html;!g" /etc/nginx/nginx.conf && \
   cat /etc/nginx/nginx.conf && \
   cd ~ && \
   pip install certbot certbot-nginx && \
